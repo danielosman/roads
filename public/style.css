@@ -1,0 +1,28 @@
+path {
+  fill: none;
+}
+
+path.base {
+  stroke: #dd2222;
+}
+
+path.offset {
+  stroke: #22dd22;
+}
+
+path.polygon {
+  stroke: #2222dd;
+}
+
+button {
+  border: 1px solid #dddddd;
+  background: none;
+  box-shadow: none;
+  border-radius: 0px;
+}
+button.active {
+  background-color: #5555ff;
+}
+button.ready {
+  background-color: #ffffff;
+}

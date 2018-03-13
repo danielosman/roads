@@ -1,0 +1,44 @@
+{
+  "name": "roads3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "start": "webpack-dev-server --host 0.0.0.0 --port 9003"
+  },
+  "author": "",
+  "license": "ISC",
+  "babel": {
+    "presets": [
+      [
+        "env",
+        {
+          "targets": {
+            "browsers": [
+              "last 2 versions"
+            ]
+          }
+        }
+      ]
+    ]
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.4",
+    "babel-preset-env": "^1.6.1",
+    "webpack": "^4.1.1",
+    "webpack-cli": "^2.0.11",
+    "webpack-dev-server": "^3.1.1"
+  },
+  "dependencies": {
+    "@turf/helpers": "^6.0.1",
+    "@turf/line-offset": "^5.1.5",
+    "@turf/line-to-polygon": "^6.0.0",
+    "d3": "^4.13.0",
+    "polygon-offset": "^0.3.1",
+    "simplepolygon": "^1.2.2",
+    "xstream": "^11.2.0"
+  }
+}
