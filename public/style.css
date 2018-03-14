@@ -22,6 +22,16 @@ g.intersection circle {
   fill: #5555ff;
 }
 
+g.intersection g.branch line.handle {
+  fill: none;
+  stroke: #dddddd;
+}
+
+g.intersection g.branch line.border {
+  fill: none;
+  stroke: #eeeeee;
+}
+
 a.btn {
   border: 1px solid #dddddd;
   padding: 10px;

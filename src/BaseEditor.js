@@ -22,27 +22,35 @@ const cancelButton = ({ buttonPanel, context }) => {
 }
 
 const addIntersection$ = ({ state$, worldClick$, worldModel, context }) => {
-  return state$.filter(state => state === 'addIntersection').addListener({
-    next () {
-      worldClick$
-        .take(1)
-        .endWhen(state$)
-        .addListener({
-          next (ev) {
-            worldModel.updateState({
-              intersections: [{
-                id: context.nextIntersectionId(),
-                x: ev.worldX,
-                y: ev.worldY
+  return state$.filter(state => state === 'addIntersection').addListener({ next () {
+    worldClick$
+      .take(1)
+      .endWhen(state$)
+      .addListener({
+        next (ev) {
+          worldModel.updateState({
+            intersections: [{
+              id: context.nextIntersectionId(),
+              x: ev.worldX,
+              y: ev.worldY,
+              branches: [{
+                dir: [1, 0],
+                w: [0.1, 0.1]
+              }, {
+                dir: [-1, 0],
+                w: [0.1, 0.1]
+              }, {
+                dir: [0, -1],
+                w: [0.1, 0.1]
               }]
-            })
-          },
-          complete () {
-            context.setState('ready')
-          }
-        })
-    }
-  })
+            }]
+          })
+        },
+        complete () {
+          context.setState('ready')
+        }
+      })
+  }})
 }
 
 const handleUIState$ = ({ state$, context }) => {

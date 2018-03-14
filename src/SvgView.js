@@ -2,6 +2,8 @@ import fromEvent from 'xstream/extra/fromEvent'
 import * as d3Scale from 'd3-scale'
 import * as d3Selection from 'd3-selection'
 import { DataFlowGraph, ReactiveFunction as λ } from 'topologica'
+import { lineString } from '@turf/helpers'
+import lineOffset from '@turf/line-offset'
 
 const dim = ({ container }) => container.getBoundingClientRect()
 
@@ -23,6 +25,13 @@ const resizeSvg = ({ svg, dim }) => setAttributes(svg, { width: dim.width, heigh
 
 const svgClick$ = ({ svg }) => fromEvent(svg, 'click')
 
+const scaleD = ({ dim, worldViewport }) => {
+  const scale = d3Scale.scaleLinear()
+    .domain([0, worldViewport[1][0] - worldViewport[0][0]])
+    .range([0, dim.width])
+  return scale
+}
+
 const scaleX = ({ dim, worldViewport }) => {
   const scale = d3Scale.scaleLinear()
     .domain([worldViewport[0][0], worldViewport[1][0]])
@@ -30,9 +39,11 @@ const scaleX = ({ dim, worldViewport }) => {
   return scale
 }
 
-const scaleY = ({ dim, worldViewport }) => {
+const scaleY = ({ dim, worldViewport, scaleD }) => {
+  const h2 = dim.height / 2.0
+  const yMid = (worldViewport[1][1] - worldViewport[0][1]) / 2.0
   const scale = d3Scale.scaleLinear()
-    .domain([worldViewport[0][1], worldViewport[1][1]])
+    .domain([yMid - scaleD.invert(h2), yMid + scaleD.invert(h2)])
     .range([0, dim.height])
   return scale
 }
@@ -70,8 +81,9 @@ export default class SvgView {
       svg: λ(svg, 'container'),
       resizeSvg: λ(resizeSvg, 'svg, dim'),
       svgClick$: λ(svgClick$, 'svg'),
+      scaleD: λ(scaleX, 'dim, worldViewport'),
       scaleX: λ(scaleX, 'dim, worldViewport'),
-      scaleY: λ(scaleY, 'dim, worldViewport'),
+      scaleY: λ(scaleY, 'dim, worldViewport, scaleD'),
       worldClick$: λ(worldClick$, 'svgClick$, scaleX, scaleY, context'),
       worldModelUpdate$: λ(worldModelUpdate$, 'worldModel, context'),
     })
@@ -101,18 +113,54 @@ export default class SvgView {
     const scaleX = this._graph.get('scaleX')
     const scaleY = this._graph.get('scaleY')
 
+    intersections.forEach((intersection) => {
+      intersection.branches.forEach((branch) => {
+        branch.handle = [
+          [intersection.x, intersection.y],
+          [intersection.x + branch.dir[0], intersection.y + branch.dir[1]]
+        ]
+        const line = lineString(branch.handle)
+        const borders = [
+          lineOffset(line, branch.w[0], { units: 'degrees' }),
+          lineOffset(line, -branch.w[1], { units: 'degrees' })
+        ]
+        branch.borders = borders.map(b => b.geometry.coordinates)
+      })
+    })
+
     const intersectionsSvg = d3Selection
       .select(svg)
       .select('.intersections')
       .selectAll('.intersection')
       .data(intersections, d => d.id)
-    intersectionsSvg.enter()
+    const gEnter = intersectionsSvg.enter()
       .append('g')
       .attr('class', 'intersection')
+    gEnter
       .append('circle')
       .attr('cx', d => scaleX(d.x))
       .attr('cy', d => scaleY(d.y))
-      .attr('r', 5)
+      .attr('r', 3)
+    const branchesSvg = gEnter.selectAll('g.branch').data(d => d.branches)
+    const branchEnter = branchesSvg.enter()
+      .append('g')
+      .attr('class', 'branch')
+    branchEnter
+      .append('line')
+      .attr('class', 'handle')
+      .attr('x1', d => scaleX(d.handle[0][0]))
+      .attr('y1', d => scaleY(d.handle[0][1]))
+      .attr('x2', d => scaleX(d.handle[1][0]))
+      .attr('y2', d => scaleY(d.handle[1][1]))
+    const borderSvg = branchEnter.selectAll('line.border').data(d => d.borders)
+    const borderEnter = borderSvg.enter()
+      .append('line')
+      .attr('class', 'border')
+      .attr('x1', d => scaleX(d[0][0]))
+      .attr('y1', d => scaleY(d[0][1]))
+      .attr('x2', d => scaleX(d[1][0]))
+      .attr('y2', d => scaleY(d[1][1]))
+
   }
 
   handleStateUpdate (state) {

@@ -1,5 +1,4 @@
-import { lineString } from '@turf/helpers'
-import lineOffset from '@turf/line-offset'
+
 import lineToPolygon from '@turf/line-to-polygon'
 import * as d3Shape from 'd3-shape'
 import simplepolygon from 'simplepolygon'
@@ -15,14 +14,13 @@ const worldModel = new WorldModel()
 
 const svgView = new SvgView()
 svgView.container = document.getElementById('canvas')
-svgView.worldViewport = [[0, 0], [50, 50]]
+svgView.worldViewport = [[0, 30], [10, 40]]
 svgView.worldModel = worldModel
 
 const baseEditor = new BaseEditor()
 baseEditor.container = document.getElementById('editor')
 baseEditor.worldClick$ = svgView.getWorldClick$()
 baseEditor.worldModel = worldModel
-
 
 
 /*
