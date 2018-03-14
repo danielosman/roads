@@ -9,14 +9,19 @@ import xs from 'xstream'
 
 import SvgView from './SvgView'
 import BaseEditor from './BaseEditor'
+import WorldModel from './WorldModel'
+
+const worldModel = new WorldModel()
 
 const svgView = new SvgView()
 svgView.container = document.getElementById('canvas')
 svgView.worldViewport = [[0, 0], [50, 50]]
+svgView.worldModel = worldModel
 
 const baseEditor = new BaseEditor()
-baseEditor.worldClick$ = svgView.getWorldClick$()
 baseEditor.container = document.getElementById('editor')
+baseEditor.worldClick$ = svgView.getWorldClick$()
+baseEditor.worldModel = worldModel
 
 
 

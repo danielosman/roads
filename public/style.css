@@ -18,6 +18,10 @@ path.polygon {
   stroke: #2222dd;
 }
 
+g.intersection circle {
+  fill: #5555ff;
+}
+
 a.btn {
   border: 1px solid #dddddd;
   padding: 10px;

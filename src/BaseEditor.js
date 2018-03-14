@@ -21,7 +21,7 @@ const cancelButton = ({ buttonPanel, context }) => {
   return button
 }
 
-const addIntersection$ = ({ state$, worldClick$, context }) => {
+const addIntersection$ = ({ state$, worldClick$, worldModel, context }) => {
   return state$.filter(state => state === 'addIntersection').addListener({
     next () {
       worldClick$
@@ -29,7 +29,13 @@ const addIntersection$ = ({ state$, worldClick$, context }) => {
         .endWhen(state$)
         .addListener({
           next (ev) {
-            console.log(ev)
+            worldModel.updateState({
+              intersections: [{
+                id: context.nextIntersectionId(),
+                x: ev.worldX,
+                y: ev.worldY
+              }]
+            })
           },
           complete () {
             context.setState('ready')
@@ -55,10 +61,11 @@ export default class BaseEditor {
       buttonPanel: λ(buttonPanel, 'container'),
       addIntersectionButton: λ(addIntersectionButton, 'buttonPanel, context'),
       cancelButton: λ(cancelButton, 'buttonPanel, context'),
-      addIntersection$: λ(addIntersection$, 'state$, worldClick$, context'),
+      addIntersection$: λ(addIntersection$, 'state$, worldClick$, worldModel, context'),
       handleUIState$: λ(handleUIState$, 'state$, context'),
     })
     this._graph.set({ context: this })
+    this._intersectionId = 0
     return new Proxy(this, {
       set (target, name, value) {
         target._graph.set({ [name]: value })
@@ -82,5 +89,10 @@ export default class BaseEditor {
     if (button) {
       button.classList.add('active')
     }
+  }
+
+  nextIntersectionId () {
+    this._intersectionId += 1
+    return this._intersectionId
   }
 }
