@@ -1,3 +1,7 @@
+body {
+  font-family: Arial;
+}
+
 path {
   fill: none;
 }
@@ -14,15 +18,24 @@ path.polygon {
   stroke: #2222dd;
 }
 
-button {
+a.btn {
   border: 1px solid #dddddd;
-  background: none;
-  box-shadow: none;
-  border-radius: 0px;
+  padding: 10px;
+  margin: 1px;
+  background-color: #ffffff;
+  display: inline-block;
+  transition: background-color 0.2s;
+  text-decoration: none;
+  color: #444466;
+  font-size: 0.75em;
 }
-button.active {
-  background-color: #5555ff;
+a.btn:hover {
+  background-color: #dddddd;
 }
-button.ready {
+a.btn.active {
+  color: #222266;
+  background-color: #8888ff;
+}
+a.btn.ready {
   background-color: #ffffff;
 }

@@ -5,14 +5,22 @@ import * as d3Shape from 'd3-shape'
 import simplepolygon from 'simplepolygon'
 import PolygonOffset from 'polygon-offset'
 import xs from 'xstream'
-import fromEvent from 'xstream/extra/fromEvent'
 
-const canvas = document.getElementById('canvas')
-const canvasRect = canvas.getBoundingClientRect()
-const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-svg.setAttribute('width', canvasRect.width)
-svg.setAttribute('height', canvasRect.height)
 
+import SvgView from './SvgView'
+import BaseEditor from './BaseEditor'
+
+const svgView = new SvgView()
+svgView.container = document.getElementById('canvas')
+svgView.worldViewport = [[0, 0], [50, 50]]
+
+const baseEditor = new BaseEditor()
+baseEditor.worldClick$ = svgView.getWorldClick$()
+baseEditor.container = document.getElementById('editor')
+
+
+
+/*
 let state = 'ready'
 
 const cancelButton = document.getElementById('cancelButton')
@@ -64,6 +72,7 @@ linePathElem.setAttribute('d', lineSvg(line.geometry.coordinates))
 linePathElem.setAttribute('class', 'base')
 //offsetPosPathElem.setAttribute('d', lineSvg(offsetPos.geometry.coordinates))
 //offsetPosPathElem.setAttribute('class', 'offset')
+*/
 
 // Simplyfiy
 /*
@@ -75,6 +84,7 @@ offsetNegPathElem.setAttribute('class', 'offset')
 */
 
 // Polygon offset
+/*
 const polygonOffset = new PolygonOffset()
 console.log(polygonOffset, line.geometry.coordinates)
 const offsetNeg2Points = polygonOffset.data(line.geometry.coordinates).arcSegments(5).offsetLine(5)
@@ -82,6 +92,7 @@ console.log(offsetNeg2Points)
 const offsetNeg2 = lineString(offsetNeg2Points[0])
 offsetNegPathElem.setAttribute('d', lineSvg(offsetNeg2.geometry.coordinates))
 offsetNegPathElem.setAttribute('class', 'offset')
+*/
 
 // Join line strings.
 /*
