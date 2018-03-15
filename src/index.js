@@ -1,11 +1,3 @@
-
-import lineToPolygon from '@turf/line-to-polygon'
-import * as d3Shape from 'd3-shape'
-import simplepolygon from 'simplepolygon'
-import PolygonOffset from 'polygon-offset'
-import xs from 'xstream'
-
-
 import SvgView from './SvgView'
 import BaseEditor from './BaseEditor'
 import WorldModel from './WorldModel'
@@ -14,14 +6,14 @@ const worldModel = new WorldModel()
 
 const svgView = new SvgView()
 svgView.container = document.getElementById('canvas')
-svgView.worldViewport = [[0, 30], [10, 40]]
+svgView.worldCoordinates = [0, 0]
+svgView.zoom = 0.5
 svgView.worldModel = worldModel
 
 const baseEditor = new BaseEditor()
 baseEditor.container = document.getElementById('editor')
-baseEditor.worldClick$ = svgView.getWorldClick$()
+baseEditor.worldClick$ = svgView.worldClick$
 baseEditor.worldModel = worldModel
-
 
 /*
 let state = 'ready'

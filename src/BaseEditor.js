@@ -1,106 +1,90 @@
 import fromEvent from 'xstream/extra/fromEvent'
 import dropRepeats from 'xstream/extra/dropRepeats'
-import { DataFlowGraph, ReactiveFunction as λ } from 'topologica'
+import ReactiveModel from 'reactive-model'
 import EventEmitter from 'eventemitter3'
 
-const stateEmitter = ({ context }) => new EventEmitter()
+import IntersectionModel from './objects/IntersectionModel'
 
-const state$ = ({ stateEmitter }) => fromEvent(stateEmitter, 'state').compose(dropRepeats())
+const state$ = (stateEmitter) => fromEvent(stateEmitter, 'state').compose(dropRepeats())
 
-const buttonPanel = ({ container }) => container.querySelector('#buttonPanel')
+const buttonPanel = (container) => container.querySelector('#buttonPanel')
 
-const addIntersectionButton = ({ buttonPanel, context }) => {
+const addIntersectionButton = (buttonPanel, stateEmitter) => {
   const button = buttonPanel.querySelector('#addIntersectionButton')
-  button.addEventListener('click', () => context.setState('addIntersection'))
+  button.addEventListener('click', () => stateEmitter.emit('state', 'addIntersection'))
   return button
 }
 
-const cancelButton = ({ buttonPanel, context }) => {
+const cancelButton = (buttonPanel, stateEmitter) => {
   const button = buttonPanel.querySelector('#cancelButton')
-  button.addEventListener('click', () => context.setState('ready'))
+  button.addEventListener('click', () => stateEmitter.emit('state', 'ready'))
   return button
 }
 
-const addIntersection$ = ({ state$, worldClick$, worldModel, context }) => {
-  return state$.filter(state => state === 'addIntersection').addListener({ next () {
-    worldClick$
-      .take(1)
-      .endWhen(state$)
-      .addListener({
-        next (ev) {
-          worldModel.updateState({
-            intersections: [{
-              id: context.nextIntersectionId(),
-              x: ev.worldX,
-              y: ev.worldY,
-              branches: [{
-                dir: [1, 0],
-                w: [0.1, 0.1]
-              }, {
-                dir: [-1, 0],
-                w: [0.1, 0.1]
-              }, {
-                dir: [0, -1],
-                w: [0.1, 0.1]
-              }]
-            }]
-          })
-        },
-        complete () {
-          context.setState('ready')
-        }
-      })
+const newIntersection = (state$, worldClick$, stateEmitter, done) => {
+  state$.filter(state => state === 'addIntersection').addListener({ next () {
+    worldClick$.take(1).endWhen(state$).addListener({
+      next (ev) {
+        const intersection = new IntersectionModel()
+        intersection.buildDefault()
+        intersection.x = ev.worldX
+        intersection.y = ev.worldY
+        done(intersection)
+      },
+      complete () {
+        stateEmitter.emit('state', 'ready')
+      }
+    })
   }})
 }
 
-const handleUIState$ = ({ state$, context }) => {
-  return state$.addListener({
-    next (state) {
-      context.handleUIState(state)
-    }
-  })
+const handleNewIntersection = (newIntersection, worldModel) => {
+  worldModel.addIntersection(newIntersection)
 }
 
-export default class BaseEditor {
-  constructor () {
-    this._graph = DataFlowGraph({
-      stateEmitter: λ(stateEmitter, 'context'),
-      state$: λ(state$, 'stateEmitter'),
-      buttonPanel: λ(buttonPanel, 'container'),
-      addIntersectionButton: λ(addIntersectionButton, 'buttonPanel, context'),
-      cancelButton: λ(cancelButton, 'buttonPanel, context'),
-      addIntersection$: λ(addIntersection$, 'state$, worldClick$, worldModel, context'),
-      handleUIState$: λ(handleUIState$, 'state$, context'),
-    })
-    this._graph.set({ context: this })
-    this._intersectionId = 0
-    return new Proxy(this, {
-      set (target, name, value) {
-        target._graph.set({ [name]: value })
-        return true
+const handleUIState = (state$, buttonPanel) => {
+    state$.addListener({
+      next (state) {
+        const allButtons = buttonPanel.querySelectorAll('.btn')
+        allButtons.forEach(button => button.classList.remove('active'))
+        const stateButtons = buttonPanel.querySelectorAll(`.btn.${state}-state`)
+        stateButtons.forEach(button => button.classList.add('active'))
       }
     })
   }
 
-  set (obj) {
-    this._graph.set(obj)
+export default class BaseEditor extends EventEmitter {
+  constructor () {
+    super()
+    this._graph = ReactiveModel()
+      ('container')
+      ('worldClick$')
+      ('worldModel')
+      ('stateEmitter', this)
+      ('state$', state$, 'stateEmitter')
+      ('buttonPanel', buttonPanel, 'container')
+      ('addIntersectionButton', addIntersectionButton, 'buttonPanel, stateEmitter')
+      ('cancelButton', cancelButton, 'buttonPanel, stateEmitter')
+      ('newIntersection', newIntersection, 'state$, worldClick$, stateEmitter')
+      (handleNewIntersection, 'newIntersection, worldModel')
+      (handleUIState, 'state$, buttonPanel')
+    this._intersectionId = 0
   }
 
-  setState (state) {
-    this._graph.get('stateEmitter').emit('state', state)
+  set container (value) {
+    this._set('container', value)
   }
 
-  handleUIState (state) {
-    const buttons = this._graph.get('buttonPanel').querySelectorAll('.btn')
-    buttons.forEach(button => button.classList.remove('active'))
-    const button = this._graph.get(`${state}Button`)
-    if (button) {
-      button.classList.add('active')
-    }
+  set worldClick$ (value) {
+    this._set('worldClick$', value)
   }
 
-  nextIntersectionId () {
-    this._intersectionId += 1
-    return this._intersectionId
+  set worldModel (value) {
+    this._set('worldModel', value)
+  }
+
+  _set (name, value) {
+    this._graph[name](value)
+    ReactiveModel.digest()
   }
 }

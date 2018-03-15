@@ -1,13 +1,16 @@
+import xs from 'xstream'
 import fromEvent from 'xstream/extra/fromEvent'
 import * as d3Scale from 'd3-scale'
 import * as d3Selection from 'd3-selection'
-import { DataFlowGraph, ReactiveFunction as λ } from 'topologica'
+import ReactiveModel from 'reactive-model'
 import { lineString } from '@turf/helpers'
 import lineOffset from '@turf/line-offset'
 
-const dim = ({ container }) => container.getBoundingClientRect()
+import { m2d, setAttributes, isFunction } from './utils'
 
-const svg = ({ container }) => {
+const dim = container => container.getBoundingClientRect()
+
+const svg = (container) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   const intersections = document.createElementNS('http://www.w3.org/2000/svg', 'g')
   intersections.classList.add('intersections')
@@ -16,108 +19,57 @@ const svg = ({ container }) => {
   return svg
 }
 
-const setAttributes = (elem, attrs) => {
-  Object.keys(attrs).forEach(attr => elem.setAttribute(attr, attrs[attr]))
-  return elem
-}
+const resizeSvg = (svg, dim) => setAttributes(svg, { width: dim.width, height: dim.height } )
 
-const resizeSvg = ({ svg, dim }) => setAttributes(svg, { width: dim.width, height: dim.height } )
+const svgClick$ = svg => fromEvent(svg, 'click')
 
-const svgClick$ = ({ svg }) => fromEvent(svg, 'click')
+const scaleD = (dim, zoom) => d3Scale.scaleLinear()
+  .domain([0, zoom * m2d(dim.width)])
+  .range([0, dim.width])
 
-const scaleD = ({ dim, worldViewport }) => {
+const scaleX = (dim, worldCoordinates, scaleD) => {
+  const w2 = dim.width / 2.0
+  const xMid = worldCoordinates[0]
   const scale = d3Scale.scaleLinear()
-    .domain([0, worldViewport[1][0] - worldViewport[0][0]])
+    .domain([xMid - scaleD.invert(w2), xMid + scaleD.invert(w2)])
     .range([0, dim.width])
   return scale
 }
 
-const scaleX = ({ dim, worldViewport }) => {
-  const scale = d3Scale.scaleLinear()
-    .domain([worldViewport[0][0], worldViewport[1][0]])
-    .range([0, dim.width])
-  return scale
-}
-
-const scaleY = ({ dim, worldViewport, scaleD }) => {
+const scaleY = (dim, worldCoordinates, scaleD) => {
   const h2 = dim.height / 2.0
-  const yMid = (worldViewport[1][1] - worldViewport[0][1]) / 2.0
+  const yMid = worldCoordinates[1]
   const scale = d3Scale.scaleLinear()
     .domain([yMid - scaleD.invert(h2), yMid + scaleD.invert(h2)])
     .range([0, dim.height])
   return scale
 }
 
-const worldClick$ = ({ svgClick$, scaleX, scaleY, context }) => {
-  let stream = context.getWorldClick$()
-  if (!stream) {
-    stream = svgClick$.map(ev => {
-      console.log(ev)
-      return {
-        worldX: scaleX.invert(ev.offsetX),
-        worldY: scaleY.invert(ev.offsetY)
-      }
-    })
-    context.setWorldClick$(stream)
-  }
-  return stream
-}
-
-const worldModelUpdate$ = ({ worldModel, context }) => {
-  const stream = fromEvent(worldModel, 'update')
-  stream.addListener({
-    next (state) {
-      context.handleStateUpdate(state)
-    }
+const newIntersection = (worldModel, svg, scaleX, scaleY, done) => {
+  worldModel.addListener('addedIntersection', intersection => {
+    console.log('newIntersection: ', intersection)
+    done(intersection)
+    renderNewIntersection(intersection, svg, scaleX, scaleY)
   })
-  return stream
 }
 
+const updateWorldClick$ = (worldClick$, svgClick$, scaleX, scaleY) => {
+  const stream = svgClick$.map(ev => ({
+    worldX: scaleX.invert(ev.offsetX),
+    worldY: scaleY.invert(ev.offsetY)
+  }))
+  worldClick$.imitate(stream)
+}
 
-export default class SvgView {
-  constructor () {
-    this._graph = DataFlowGraph({
-      dim: λ(dim, 'container'),
-      svg: λ(svg, 'container'),
-      resizeSvg: λ(resizeSvg, 'svg, dim'),
-      svgClick$: λ(svgClick$, 'svg'),
-      scaleD: λ(scaleX, 'dim, worldViewport'),
-      scaleX: λ(scaleX, 'dim, worldViewport'),
-      scaleY: λ(scaleY, 'dim, worldViewport, scaleD'),
-      worldClick$: λ(worldClick$, 'svgClick$, scaleX, scaleY, context'),
-      worldModelUpdate$: λ(worldModelUpdate$, 'worldModel, context'),
-    })
-    this._graph.set({ context: this })
-    return new Proxy(this, {
-      set (target, name, value) {
-        target._graph.set({ [name]: value })
-        return true
-      }
-    })
-  }
-
-  set (obj) {
-    this._graph.set(obj)
-  }
-
-  setWorldClick$ (stream) {
-    this._worldClick$ = stream
-  }
-
-  getWorldClick$ () {
-    return this._worldClick$
-  }
-
-  intersectionsUpdate (intersections) {
-    const svg = this._graph.get('svg')
-    const scaleX = this._graph.get('scaleX')
-    const scaleY = this._graph.get('scaleY')
-
+const updateHandlers = {
+  intersectionsUpdate (intersections, svg, scaleX, scaleY) {
     intersections.forEach((intersection) => {
       intersection.branches.forEach((branch) => {
+        const dist = m2d(25)
+        const dir = branch.dir
         branch.handle = [
           [intersection.x, intersection.y],
-          [intersection.x + branch.dir[0], intersection.y + branch.dir[1]]
+          [intersection.x + dist * dir[0], intersection.y + dist * dir[1]]
         ]
         const line = lineString(branch.handle)
         const borders = [
@@ -162,8 +114,61 @@ export default class SvgView {
       .attr('y2', d => scaleY(d[1][1]))
 
   }
+}
 
-  handleStateUpdate (state) {
-    Object.keys(state).forEach(key => this[`${key}Update`](state[key]))
+const renderNewIntersection = (newIntersection, svg, scaleX, scaleY) => {
+  console.log('renderNewIntersection')
+  const g = d3Selection.select(svg).select('g.intersections')
+  const elem = g.select(`#${newIntersection.cid}`)
+  if (!elem.empty()) return
+  g.append('g').attr('class', 'intersection')
+}
+
+
+export default class SvgView {
+  constructor () {
+    this._graph = ReactiveModel()
+      ('container')
+      ('worldCoordinates')
+      ('zoom')
+      ('worldModel')
+      ('worldClick$', xs.create())
+      ('dim', dim, 'container')
+      ('svg', svg, 'container')
+      ('resizeSvg', resizeSvg, 'svg, dim')
+      ('svgClick$', svgClick$, 'svg')
+      ('scaleD', scaleD, 'dim, zoom')
+      ('scaleX', scaleX, 'dim, worldCoordinates, scaleD')
+      ('scaleY', scaleY, 'dim, worldCoordinates, scaleD')
+      ('newIntersection', newIntersection, 'worldModel, svg, scaleX, scaleY')
+      (updateWorldClick$, 'worldClick$, svgClick$, scaleX, scaleY')
+      (renderNewIntersection, 'newIntersection, svg, scaleX, scaleY')
+      
+    ReactiveModel.digest()
+  }
+
+  set container (value) {
+    this._set('container', value)
+  }
+
+  set worldCoordinates (value) {
+    this._set('worldCoordinates', value)
+  }
+
+  set zoom (value) {
+    this._set('zoom', value)
+  }
+
+  set worldModel (value) {
+    this._set('worldModel', value)
+  }
+
+  get worldClick$ () {
+    return this._graph.worldClick$()
+  }
+
+  _set (name, value) {
+    this._graph[name](value)
+    ReactiveModel.digest()
   }
 }
