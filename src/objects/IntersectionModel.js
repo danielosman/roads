@@ -95,6 +95,12 @@ export default class IntersectionModel extends EventEmitter {
     })
   }
 
+  changeBranchDir (i, dir) {
+    this.branches[i].dir = dir
+    this.buildPolygon()
+    this.emit('changed', this)
+  }
+
   scaledPolygon (scaleX, scaleY) {
     const intersection = this
     return intersection.points.map(p => [scaleX(p[0]), scaleY(p[1])])

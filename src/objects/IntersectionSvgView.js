@@ -1,10 +1,11 @@
 import ReactiveModel from 'reactive-model'
+import EventEmitter from 'eventemitter3'
+import fromEvent from 'xstream/extra/fromEvent'
+import sampleCombine from 'xstream/extra/sampleCombine'
 import SVG from 'svg.js'
 import draggable from 'svg.draggable.js'
 
 import { normalize } from '../utils'
-
-const point = (model, scaleX, scaleY) => [scaleX(model.x), scaleY(model.y)]
 
 const svg = (model) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'g')
@@ -13,63 +14,99 @@ const svg = (model) => {
   return svg
 }
 
+const model$ = (initialModel) => {
+  return fromEvent(initialModel, 'changed').startWith(initialModel)
+}
+
+const branchCircleElems$ = (emitter) => {
+  return fromEvent(emitter, 'branchCircleElems').startWith([])
+}
+
+const model = (model$, done) => {
+  model$.addListener({ next: (model) => {
+    console.log('Model changed: ', model)
+    setTimeout(() => {
+      done(model)
+    }, 0)
+  }})
+}
+
+const point = (model, scaleX, scaleY) => [scaleX(model.x), scaleY(model.y)]
+
 const polygon = svg => SVG.adopt(svg).polygon()
 
-const branchCircles = (svg, model) => {
-  const g = SVG.adopt(svg)
-  const circles = []
-  model.branches.forEach((branch) => {
-    const circle = g.circle().draggable()
-    circles.push(circle)
+const branchCircleElems = (model$, branchCircleElems$, svg, emitter, done) => {
+  model$.compose(sampleCombine(branchCircleElems$)).addListener({
+    next([model, branchCircleElems]) {
+      const g = SVG.adopt(svg)
+      const newElems = []
+      model.branches.forEach((branch, i) => {
+        if (!branchCircleElems[i]) {
+          const circle = g.circle().draggable()
+          circle.on('dragend', (ev) => {
+            emitter.emit('branchCircleMoved', { branchIndex: i, p: ev.detail.p })
+          })
+          newElems.push(circle)
+        } else {
+          newElems.push(branchCircleElems[i])
+        }
+      })
+      emitter.emit('branchCircleElems', newElems)
+      done(newElems)
+    }
   })
-  return circles
 }
 
-const branchCircleMoved = (branchCircles, done) => {
-  branchCircles.forEach((circle, i) => {
-    circle.on('dragend', (ev) => {
-      done({ i, p: ev.detail.p })
-    })
+const branchCircleMoved = (emitter, done) => {
+  emitter.addListener('branchCircleMoved', (move) => {
+    console.log('branchCircleMoved: ', move)
+    done(move)
   })
 }
 
-const changedBranchDir = (branchCircleMoved, point) => {
-  const dir = normalize([point[0] - branchCircleMoved.p.x, point[1] - branchCircleMoved.p.y])
-  return { i: branchCircleMoved.i, dir }
+const handleChangedBranchDir = (branchCircleMoved, point, model) => {
+  const dir = normalize([branchCircleMoved.p.x - point[0], branchCircleMoved.p.y - point[1]])
+  console.log('handleChangedBranchDir')
+  model.changeBranchDir(branchCircleMoved.branchIndex, dir)
 }
 
 const renderIntersection = (polygon, model, scaleX, scaleY) => {
+  console.log('renderIntersection: ', model)
   polygon.plot(model.scaledPolygon(scaleX, scaleY))
-  polygon.draggable()
 }
 
-const renderBranchCircles = (branchCircles, model, scaleX, scaleY) => {
+const renderBranchCircles = (branchCircleElems, model, scaleX, scaleY) => {
   const scaledBranchCircles = model.scaledBranchCircles(scaleX, scaleY)
-  branchCircles.forEach((circle, i) => {
+  branchCircleElems.forEach((circle, i) => {
     const scaledCircle = scaledBranchCircles[i]
     circle.cx(scaledCircle.cx).cy(scaledCircle.cy).radius(3)
   })
 }
 
 
-export default class IntersectionSvgView {
+export default class IntersectionSvgView extends EventEmitter {
   constructor () {
+    super()
     this._graph = ReactiveModel()
-      ('model')
+      ('initialModel')
       ('scaleX')
       ('scaleY')
-      ('svg', svg, 'model')
-      ('point', point, 'model, scaleX, scaleY')
+      ('emitter', this)
+      ('svg', svg, 'initialModel')
+      ('model$', model$, 'initialModel')
+      ('branchCircleElems$', branchCircleElems$, 'emitter')
+      ('model', model, 'model$')
+      ('point', point, 'initialModel, scaleX, scaleY')
       ('polygon', polygon, 'svg')
-      ('branchCircles', branchCircles, 'svg, model')
-      ('branchCircleMoved', branchCircleMoved, 'branchCircles')
-      ('changedBranchDir', changedBranchDir, 'branchCircleMoved, point')
+      ('branchCircleElems', branchCircleElems, 'model$, branchCircleElems$, svg, emitter')
+      ('branchCircleMoved', branchCircleMoved, 'emitter')
+      (handleChangedBranchDir, 'branchCircleMoved, point, initialModel')
       (renderIntersection, 'polygon, model, scaleX, scaleY')
-      (renderBranchCircles, 'branchCircles, model, scaleX, scaleY')
+      (renderBranchCircles, 'branchCircleElems, model, scaleX, scaleY')
   }
 
   set model (value) {
-    this._set('model', value)
+    this._set('initialModel', value)
   }
 
   set scaleX (value) {
