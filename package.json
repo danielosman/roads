@@ -33,14 +33,21 @@
     "webpack-dev-server": "^3.1.1"
   },
   "dependencies": {
+    "@turf/along": "^6.0.0",
+    "@turf/bearing": "^6.0.0",
+    "@turf/boolean-parallel": "^6.0.0",
     "@turf/helpers": "^6.0.1",
+    "@turf/line-intersect": "^6.0.0",
     "@turf/line-offset": "^5.1.5",
     "@turf/line-to-polygon": "^6.0.0",
+    "@turf/nearest-point-on-line": "^6.0.1",
     "d3-scale": "^2.0.0",
     "d3-selection": "^1.3.0",
     "d3-shape": "^1.2.0",
     "eventemitter3": "^3.0.1",
     "reactive-model": "^0.13.0",
+    "svg.draggable.js": "^2.2.1",
+    "svg.js": "^2.6.4",
     "xstream": "^11.2.0"
   }
 }

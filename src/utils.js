@@ -10,4 +10,9 @@ const isFunction = (functionToCheck) => {
  return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]'
 }
 
-export { m2d, setAttributes, isFunction }
+const normalize = (dir) => {
+  const len = Math.sqrt(dir.reduce((sum, d) => sum + d * d, 0))
+  return dir.map(d => d / len)
+}
+
+export { m2d, setAttributes, isFunction, normalize }

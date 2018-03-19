@@ -18,6 +18,10 @@ path.polygon {
   stroke: #2222dd;
 }
 
+g.intersection polygon {
+  fill: #222222;
+}
+
 g.intersection circle {
   fill: #5555ff;
 }

@@ -3,10 +3,9 @@ import fromEvent from 'xstream/extra/fromEvent'
 import * as d3Scale from 'd3-scale'
 import * as d3Selection from 'd3-selection'
 import ReactiveModel from 'reactive-model'
-import { lineString } from '@turf/helpers'
-import lineOffset from '@turf/line-offset'
 
-import { m2d, setAttributes, isFunction } from './utils'
+import { m2d, setAttributes } from './utils'
+import IntersectionSvgView from './objects/IntersectionSvgView'
 
 const dim = container => container.getBoundingClientRect()
 
@@ -45,12 +44,19 @@ const scaleY = (dim, worldCoordinates, scaleD) => {
   return scale
 }
 
-const newIntersection = (worldModel, svg, scaleX, scaleY, done) => {
+const newIntersection = (worldModel, done) => {
   worldModel.addListener('addedIntersection', intersection => {
-    console.log('newIntersection: ', intersection)
-    done(intersection)
-    renderNewIntersection(intersection, svg, scaleX, scaleY)
+    setTimeout(() => { done(intersection) }, 0)
   })
+}
+
+const newIntersectionView = (newIntersection, intersections, svg) => {
+  const view = new IntersectionSvgView()
+  view.model = newIntersection
+  intersections.push(view)
+  const intersectionsGroup = svg.querySelector('g.intersections')
+  intersectionsGroup.appendChild(view.svg)
+  return view
 }
 
 const updateWorldClick$ = (worldClick$, svgClick$, scaleX, scaleY) => {
@@ -61,67 +67,8 @@ const updateWorldClick$ = (worldClick$, svgClick$, scaleX, scaleY) => {
   worldClick$.imitate(stream)
 }
 
-const updateHandlers = {
-  intersectionsUpdate (intersections, svg, scaleX, scaleY) {
-    intersections.forEach((intersection) => {
-      intersection.branches.forEach((branch) => {
-        const dist = m2d(25)
-        const dir = branch.dir
-        branch.handle = [
-          [intersection.x, intersection.y],
-          [intersection.x + dist * dir[0], intersection.y + dist * dir[1]]
-        ]
-        const line = lineString(branch.handle)
-        const borders = [
-          lineOffset(line, branch.w[0], { units: 'degrees' }),
-          lineOffset(line, -branch.w[1], { units: 'degrees' })
-        ]
-        branch.borders = borders.map(b => b.geometry.coordinates)
-      })
-    })
-
-    const intersectionsSvg = d3Selection
-      .select(svg)
-      .select('.intersections')
-      .selectAll('.intersection')
-      .data(intersections, d => d.id)
-    const gEnter = intersectionsSvg.enter()
-      .append('g')
-      .attr('class', 'intersection')
-    gEnter
-      .append('circle')
-      .attr('cx', d => scaleX(d.x))
-      .attr('cy', d => scaleY(d.y))
-      .attr('r', 3)
-    const branchesSvg = gEnter.selectAll('g.branch').data(d => d.branches)
-    const branchEnter = branchesSvg.enter()
-      .append('g')
-      .attr('class', 'branch')
-    branchEnter
-      .append('line')
-      .attr('class', 'handle')
-      .attr('x1', d => scaleX(d.handle[0][0]))
-      .attr('y1', d => scaleY(d.handle[0][1]))
-      .attr('x2', d => scaleX(d.handle[1][0]))
-      .attr('y2', d => scaleY(d.handle[1][1]))
-    const borderSvg = branchEnter.selectAll('line.border').data(d => d.borders)
-    const borderEnter = borderSvg.enter()
-      .append('line')
-      .attr('class', 'border')
-      .attr('x1', d => scaleX(d[0][0]))
-      .attr('y1', d => scaleY(d[0][1]))
-      .attr('x2', d => scaleX(d[1][0]))
-      .attr('y2', d => scaleY(d[1][1]))
-
-  }
-}
-
-const renderNewIntersection = (newIntersection, svg, scaleX, scaleY) => {
-  console.log('renderNewIntersection')
-  const g = d3Selection.select(svg).select('g.intersections')
-  const elem = g.select(`#${newIntersection.cid}`)
-  if (!elem.empty()) return
-  g.append('g').attr('class', 'intersection')
+const renderNewIntersection = (newIntersectionView, scaleX, scaleY) => {
+  newIntersectionView.setScales(scaleX, scaleY)
 }
 
 
@@ -133,6 +80,7 @@ export default class SvgView {
       ('zoom')
       ('worldModel')
       ('worldClick$', xs.create())
+      ('intersections', [])
       ('dim', dim, 'container')
       ('svg', svg, 'container')
       ('resizeSvg', resizeSvg, 'svg, dim')
@@ -140,11 +88,10 @@ export default class SvgView {
       ('scaleD', scaleD, 'dim, zoom')
       ('scaleX', scaleX, 'dim, worldCoordinates, scaleD')
       ('scaleY', scaleY, 'dim, worldCoordinates, scaleD')
-      ('newIntersection', newIntersection, 'worldModel, svg, scaleX, scaleY')
+      ('newIntersection', newIntersection, 'worldModel')
+      ('newIntersectionView', newIntersectionView, 'newIntersection, intersections, svg')
+      (renderNewIntersection, 'newIntersectionView, scaleX, scaleY')
       (updateWorldClick$, 'worldClick$, svgClick$, scaleX, scaleY')
-      (renderNewIntersection, 'newIntersection, svg, scaleX, scaleY')
-      
-    ReactiveModel.digest()
   }
 
   set container (value) {

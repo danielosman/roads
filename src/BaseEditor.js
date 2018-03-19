@@ -39,6 +39,7 @@ const newIntersection = (state$, worldClick$, stateEmitter, done) => {
 }
 
 const handleNewIntersection = (newIntersection, worldModel) => {
+  newIntersection.buildPolygon()
   worldModel.addIntersection(newIntersection)
 }
 
@@ -68,7 +69,8 @@ export default class BaseEditor extends EventEmitter {
       ('newIntersection', newIntersection, 'state$, worldClick$, stateEmitter')
       (handleNewIntersection, 'newIntersection, worldModel')
       (handleUIState, 'state$, buttonPanel')
-    this._intersectionId = 0
+
+    //ReactiveModel.digest()
   }
 
   set container (value) {
