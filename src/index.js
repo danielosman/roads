@@ -7,7 +7,7 @@ const worldModel = new WorldModel()
 const svgView = new SvgView()
 svgView.container = document.getElementById('canvas')
 svgView.worldCoordinates = [0, 0]
-svgView.zoom = 0.1
+svgView.zoom = 0.25
 svgView.worldModel = worldModel
 
 const baseEditor = new BaseEditor()

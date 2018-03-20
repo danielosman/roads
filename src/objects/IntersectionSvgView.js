@@ -4,6 +4,7 @@ import fromEvent from 'xstream/extra/fromEvent'
 import sampleCombine from 'xstream/extra/sampleCombine'
 import SVG from 'svg.js'
 import draggable from 'svg.draggable.js'
+import Rx from 'rxjs/Rx'
 
 import { normalize } from '../utils'
 
@@ -15,67 +16,44 @@ const svg = (model) => {
 }
 
 const model$ = (initialModel) => {
-  return fromEvent(initialModel, 'changed').startWith(initialModel)
+  return Rx.Observable.fromEvent(initialModel, 'changed').startWith(initialModel)
 }
 
-const branchCircleElems$ = (emitter) => {
-  return fromEvent(emitter, 'branchCircleElems').startWith([])
+const branchCircleElems$ = (previousBranchCircleElems, [model, svg]) => {
+  const g = SVG.adopt(svg)
+  const newElems = []
+  model.branches.forEach((branch, i) => {
+    if (!previousBranchCircleElems[i]) {
+      const circle = g.circle().draggable()
+      circle.on('dragend', (ev) => {
+        model.emit('branchCircleMoved', { branchIndex: i, p: ev.detail.p })
+      })
+      newElems.push(circle)
+    } else {
+      newElems.push(previousBranchCircleElems[i])
+    }
+  })
+  return newElems
 }
 
-const model = (model$, done) => {
-  model$.addListener({ next: (model) => {
-    console.log('Model changed: ', model)
-    setTimeout(() => {
-      done(model)
-    }, 0)
-  }})
-}
-
-const point = (model, scaleX, scaleY) => [scaleX(model.x), scaleY(model.y)]
+const point = ([model, scaleX, scaleY]) => [scaleX(model.x), scaleY(model.y)]
 
 const polygon = svg => SVG.adopt(svg).polygon()
 
-const branchCircleElems = (model$, branchCircleElems$, svg, emitter, done) => {
-  model$.compose(sampleCombine(branchCircleElems$)).addListener({
-    next([model, branchCircleElems]) {
-      const g = SVG.adopt(svg)
-      const newElems = []
-      model.branches.forEach((branch, i) => {
-        if (!branchCircleElems[i]) {
-          const circle = g.circle().draggable()
-          circle.on('dragend', (ev) => {
-            emitter.emit('branchCircleMoved', { branchIndex: i, p: ev.detail.p })
-          })
-          newElems.push(circle)
-        } else {
-          newElems.push(branchCircleElems[i])
-        }
-      })
-      emitter.emit('branchCircleElems', newElems)
-      done(newElems)
-    }
-  })
+const branchCircleMoved$ = (initialModel) => {
+  return Rx.Observable.fromEvent(initialModel, 'branchCircleMoved')
 }
 
-const branchCircleMoved = (emitter, done) => {
-  emitter.addListener('branchCircleMoved', (move) => {
-    console.log('branchCircleMoved: ', move)
-    done(move)
-  })
-}
-
-const handleChangedBranchDir = (branchCircleMoved, point, model) => {
+const handleChangedBranchDir = ([branchCircleMoved, point, model]) => {
   const dir = normalize([branchCircleMoved.p.x - point[0], branchCircleMoved.p.y - point[1]])
-  console.log('handleChangedBranchDir')
   model.changeBranchDir(branchCircleMoved.branchIndex, dir)
 }
 
-const renderIntersection = (polygon, model, scaleX, scaleY) => {
-  console.log('renderIntersection: ', model)
+const renderIntersection = ([model, polygon, scaleX, scaleY]) => {
   polygon.plot(model.scaledPolygon(scaleX, scaleY))
 }
 
-const renderBranchCircles = (branchCircleElems, model, scaleX, scaleY) => {
+const renderBranchCircles = ([branchCircleElems, model, scaleX, scaleY]) => {
   const scaledBranchCircles = model.scaledBranchCircles(scaleX, scaleY)
   branchCircleElems.forEach((circle, i) => {
     const scaledCircle = scaledBranchCircles[i]
@@ -87,47 +65,46 @@ const renderBranchCircles = (branchCircleElems, model, scaleX, scaleY) => {
 export default class IntersectionSvgView extends EventEmitter {
   constructor () {
     super()
-    this._graph = ReactiveModel()
-      ('initialModel')
-      ('scaleX')
-      ('scaleY')
-      ('emitter', this)
-      ('svg', svg, 'initialModel')
-      ('model$', model$, 'initialModel')
-      ('branchCircleElems$', branchCircleElems$, 'emitter')
-      ('model', model, 'model$')
-      ('point', point, 'initialModel, scaleX, scaleY')
-      ('polygon', polygon, 'svg')
-      ('branchCircleElems', branchCircleElems, 'model$, branchCircleElems$, svg, emitter')
-      ('branchCircleMoved', branchCircleMoved, 'emitter')
-      (handleChangedBranchDir, 'branchCircleMoved, point, initialModel')
-      (renderIntersection, 'polygon, model, scaleX, scaleY')
-      (renderBranchCircles, 'branchCircleElems, model, scaleX, scaleY')
+    this.initialModel$ = new Rx.ReplaySubject(1)
+    this.scaleX$ = new Rx.Subject()
+    this.scaleY$ = new Rx.Subject()
+    this.svg$ = this.initialModel$.map(svg).publishReplay(1)
+    this.model$ = this.initialModel$.switchMap(model$)
+    this.branchCircleElems$ = this.model$.withLatestFrom(this.svg$).scan(branchCircleElems$, [])
+    this.point$ = this.model$.combineLatest(this.scaleX$, this.scaleY$).map(point)
+    this.polygon$ = this.svg$.map(polygon)
+    this.branchCircleMoved$ = this.initialModel$.switchMap(branchCircleMoved$)
+
+    this.svg$.connect()
+    this.svg$.subscribe(svg => this._svg = svg)
+    this.branchCircleMoved$
+      .withLatestFrom(this.point$, this.model$)
+      .subscribe(handleChangedBranchDir)
+    this.model$
+      .combineLatest(this.polygon$, this.scaleX$, this.scaleY$)
+      .subscribe(renderIntersection)
+    this.branchCircleElems$
+      .combineLatest(this.model$, this.scaleX$, this.scaleY$)
+      .subscribe(renderBranchCircles)
   }
 
   set model (value) {
-    this._set('initialModel', value)
+    this.initialModel$.next(value)
   }
 
   set scaleX (value) {
-    this._set('scaleX', value)
+    this.scaleX$.next(value)
   }
 
   set scaleY (value) {
-    this._set('scaleY', value)
-  }
-
-  setScales (scaleX, scaleY) {
-    this._graph.scaleX(scaleX).scaleY(scaleY)
-    ReactiveModel.digest()
+    this.scaleY$.next(value)
   }
 
   get svg () {
-    return this._graph.svg()
+    return this._svg
   }
 
-  _set (name, value) {
-    this._graph[name](value)
-    ReactiveModel.digest()
+  subscribeSvg (done) {
+    this.svg$.subscribe(done)
   }
 }

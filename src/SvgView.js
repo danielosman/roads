@@ -55,6 +55,12 @@ const newIntersectionView = (newIntersection, intersections, svg) => {
   view.model = newIntersection
   intersections.push(view)
   const intersectionsGroup = svg.querySelector('g.intersections')
+  /*
+  view.subscribeSvg((g) => {
+    console.log('Got G')
+    intersectionsGroup.appendChild(g)
+  })
+  */
   intersectionsGroup.appendChild(view.svg)
   return view
 }
@@ -68,7 +74,9 @@ const updateWorldClick$ = (worldClick$, svgClick$, scaleX, scaleY) => {
 }
 
 const renderNewIntersection = (newIntersectionView, scaleX, scaleY) => {
-  newIntersectionView.setScales(scaleX, scaleY)
+  // newIntersectionView.setScales(scaleX, scaleY)
+  newIntersectionView.scaleX = scaleX
+  newIntersectionView.scaleY = scaleY
 }
 
 
