@@ -108,9 +108,14 @@ export default class IntersectionModel extends EventEmitter {
 
   scaledBranchCircles (scaleX, scaleY) {
     const intersection = this
-    return intersection.branches.map(branch => ({
-      cx: scaleX(branch.circle[0]),
-      cy: scaleY(branch.circle[1])
-    }))
+    return intersection.branches.map((branch) => {
+      let r = branch.w[0] + branch.w[1]
+      r = (scaleX(r) - scaleX(0)) / 2
+      return {
+        cx: scaleX(branch.circle[0]),
+        cy: scaleY(branch.circle[1]),
+        r
+      }
+    })
   }
 }

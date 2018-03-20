@@ -1,10 +1,7 @@
-import ReactiveModel from 'reactive-model'
 import EventEmitter from 'eventemitter3'
-import fromEvent from 'xstream/extra/fromEvent'
-import sampleCombine from 'xstream/extra/sampleCombine'
+import Rx from 'rxjs/Rx'
 import SVG from 'svg.js'
 import draggable from 'svg.draggable.js'
-import Rx from 'rxjs/Rx'
 
 import { normalize } from '../utils'
 
@@ -57,7 +54,7 @@ const renderBranchCircles = ([branchCircleElems, model, scaleX, scaleY]) => {
   const scaledBranchCircles = model.scaledBranchCircles(scaleX, scaleY)
   branchCircleElems.forEach((circle, i) => {
     const scaledCircle = scaledBranchCircles[i]
-    circle.cx(scaledCircle.cx).cy(scaledCircle.cy).radius(3)
+    circle.cx(scaledCircle.cx).cy(scaledCircle.cy).radius(scaledCircle.r)
   })
 }
 

@@ -12,7 +12,7 @@ svgView.worldModel = worldModel
 
 const baseEditor = new BaseEditor()
 baseEditor.container = document.getElementById('editor')
-baseEditor.worldClick$ = svgView.worldClick$
+baseEditor.worldClickStream = svgView.worldClick$
 baseEditor.worldModel = worldModel
 
 /*

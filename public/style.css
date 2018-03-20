@@ -25,6 +25,11 @@ g.intersection polygon {
 g.intersection circle {
   fill: #5555ff;
 }
+g.intersection circle:hover {
+  stroke: #dd5555;
+  stroke-width: 3px;
+  cursor: move;
+}
 
 g.intersection g.branch line.handle {
   fill: none;
