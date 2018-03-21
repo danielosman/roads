@@ -1,8 +1,5 @@
-import xs from 'xstream'
-import fromEvent from 'xstream/extra/fromEvent'
 import * as d3Scale from 'd3-scale'
-import * as d3Selection from 'd3-selection'
-import ReactiveModel from 'reactive-model'
+import Rx from 'rxjs/Rx'
 
 import { m2d, setAttributes } from './utils'
 import IntersectionSvgView from './objects/IntersectionSvgView'
@@ -20,7 +17,7 @@ const svg = (container) => {
 
 const resizeSvg = (svg, dim) => setAttributes(svg, { width: dim.width, height: dim.height } )
 
-const svgClick$ = svg => fromEvent(svg, 'click')
+const svgClick = svg => Rx.Observable.fromEvent(svg, 'click')
 
 const scaleD = (dim, zoom) => d3Scale.scaleLinear()
   .domain([0, zoom * m2d(dim.width)])
@@ -44,86 +41,67 @@ const scaleY = (dim, worldCoordinates, scaleD) => {
   return scale
 }
 
-const newIntersection = (worldModel, done) => {
-  worldModel.addListener('addedIntersection', intersection => {
-    setTimeout(() => { done(intersection) }, 0)
-  })
-}
+const worldClick = (ev, scaleX, scaleY) => ({
+  worldX: scaleX.invert(ev.offsetX),
+  worldY: scaleY.invert(ev.offsetY)
+})
 
-const newIntersectionView = (newIntersection, intersections, svg) => {
+const intersection = (worldModel) => Rx.Observable.fromEvent(worldModel, 'addedIntersection')
+
+const intersectionView = (intersection, intersections, svg) => {
   const view = new IntersectionSvgView()
-  view.model = newIntersection
+  view.model = intersection
   intersections.push(view)
   const intersectionsGroup = svg.querySelector('g.intersections')
-  /*
-  view.subscribeSvg((g) => {
-    console.log('Got G')
-    intersectionsGroup.appendChild(g)
-  })
-  */
   intersectionsGroup.appendChild(view.svg)
   return view
 }
 
-const updateWorldClick$ = (worldClick$, svgClick$, scaleX, scaleY) => {
-  const stream = svgClick$.map(ev => ({
-    worldX: scaleX.invert(ev.offsetX),
-    worldY: scaleY.invert(ev.offsetY)
-  }))
-  worldClick$.imitate(stream)
-}
-
-const renderNewIntersection = (newIntersectionView, scaleX, scaleY) => {
-  // newIntersectionView.setScales(scaleX, scaleY)
-  newIntersectionView.scaleX = scaleX
-  newIntersectionView.scaleY = scaleY
+const renderNewIntersection = (intersectionView, scaleX, scaleY) => {
+  intersectionView.scaleX = scaleX
+  intersectionView.scaleY = scaleY
 }
 
 
 export default class SvgView {
   constructor () {
-    this._graph = ReactiveModel()
-      ('container')
-      ('worldCoordinates')
-      ('zoom')
-      ('worldModel')
-      ('worldClick$', xs.create())
-      ('intersections', [])
-      ('dim', dim, 'container')
-      ('svg', svg, 'container')
-      ('resizeSvg', resizeSvg, 'svg, dim')
-      ('svgClick$', svgClick$, 'svg')
-      ('scaleD', scaleD, 'dim, zoom')
-      ('scaleX', scaleX, 'dim, worldCoordinates, scaleD')
-      ('scaleY', scaleY, 'dim, worldCoordinates, scaleD')
-      ('newIntersection', newIntersection, 'worldModel')
-      ('newIntersectionView', newIntersectionView, 'newIntersection, intersections, svg')
-      (renderNewIntersection, 'newIntersectionView, scaleX, scaleY')
-      (updateWorldClick$, 'worldClick$, svgClick$, scaleX, scaleY')
+    this.container$ = new Rx.Subject()
+    this.worldCoordinates$ = new Rx.Subject()
+    this.zoom$ = new Rx.Subject()
+    this.worldModel$ = new Rx.Subject()
+    this.intersections$ = new Rx.BehaviorSubject([])
+    this.dim$ = this.container$.map(dim)
+    this.svg$ = this.container$.map(svg).share()
+    this.svgClick$ = this.svg$.switchMap(svgClick)
+    this.scaleD$ = this.dim$.combineLatest(this.zoom$, scaleD)
+    this.scaleX$ = this.dim$.combineLatest(this.worldCoordinates$, this.scaleD$, scaleX)
+    this.scaleY$ = this.dim$.combineLatest(this.worldCoordinates$, this.scaleD$, scaleY)
+    this.worldClick$ = this.svgClick$.withLatestFrom(this.scaleX$, this.scaleY$, worldClick).share()
+    this.intersection$ = this.worldModel$.switchMap(intersection)
+    this.intersectionView$ = this.intersection$.withLatestFrom(this.intersections$, this.svg$, intersectionView)
+
+    this.svg$.combineLatest(this.dim$, resizeSvg).subscribe()
+    this.worldClick$.subscribe()
+    this.intersectionView$.combineLatest(this.scaleX$, this.scaleY$, renderNewIntersection).subscribe()
   }
 
   set container (value) {
-    this._set('container', value)
+    this.container$.next(value)
   }
 
   set worldCoordinates (value) {
-    this._set('worldCoordinates', value)
+    this.worldCoordinates$.next(value)
   }
 
   set zoom (value) {
-    this._set('zoom', value)
+    this.zoom$.next(value)
   }
 
   set worldModel (value) {
-    this._set('worldModel', value)
+    this.worldModel$.next(value)
   }
 
-  get worldClick$ () {
-    return this._graph.worldClick$()
-  }
-
-  _set (name, value) {
-    this._graph[name](value)
-    ReactiveModel.digest()
+  get worldClickStream () {
+    return this.worldClick$
   }
 }
