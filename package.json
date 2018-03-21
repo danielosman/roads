@@ -35,7 +35,7 @@
   "dependencies": {
     "@turf/along": "^6.0.0",
     "@turf/bearing": "^6.0.0",
-    "@turf/boolean-parallel": "^6.0.0",
+    "@turf/circle": "^6.0.0",
     "@turf/helpers": "^6.0.1",
     "@turf/line-intersect": "^6.0.0",
     "@turf/line-offset": "^5.1.5",
@@ -49,6 +49,7 @@
     "rxjs": "^5.5.7",
     "svg.draggable.js": "^2.2.1",
     "svg.js": "^2.6.4",
+    "three": "^0.91.0",
     "xstream": "^11.2.0"
   }
 }

@@ -45,10 +45,12 @@ a.btn {
   border: 1px solid #dddddd;
   padding: 10px;
   margin: 1px;
+  width: 120px;
   background-color: #ffffff;
   display: inline-block;
   transition: background-color 0.2s;
   text-decoration: none;
+  text-align: center;
   color: #444466;
   font-size: 0.75em;
 }

@@ -3,7 +3,6 @@ import { lineString } from '@turf/helpers'
 import lineOffset from '@turf/line-offset'
 import bearing from '@turf/bearing'
 import lineIntersect from '@turf/line-intersect'
-import isParallel from '@turf/boolean-parallel'
 import nearestPointOnLine from '@turf/nearest-point-on-line'
 import along from '@turf/along'
 

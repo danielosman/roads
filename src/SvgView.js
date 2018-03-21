@@ -3,19 +3,21 @@ import Rx from 'rxjs/Rx'
 
 import { m2d, setAttributes } from './utils'
 import IntersectionSvgView from './objects/IntersectionSvgView'
+import RoadSvgView from './objects/RoadSvgView'
 
 const dim = container => container.getBoundingClientRect()
 
 const svg = (container) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-  const intersections = document.createElementNS('http://www.w3.org/2000/svg', 'g')
-  intersections.classList.add('intersections')
-  svg.appendChild(intersections)
+  const groups = ['intersections', 'roads']
+  groups.forEach((group) => {
+    const groupElem = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    groupElem.classList.add(group)
+    svg.appendChild(groupElem)
+  })
   container.appendChild(svg)
   return svg
 }
-
-const resizeSvg = (svg, dim) => setAttributes(svg, { width: dim.width, height: dim.height } )
 
 const svgClick = svg => Rx.Observable.fromEvent(svg, 'click')
 
@@ -57,9 +59,22 @@ const intersectionView = (intersection, intersections, svg) => {
   return view
 }
 
-const renderNewIntersection = (intersectionView, scaleX, scaleY) => {
-  intersectionView.scaleX = scaleX
-  intersectionView.scaleY = scaleY
+const road = (worldModel) => Rx.Observable.fromEvent(worldModel, 'addedRoad')
+
+const roadView = (road, roads, svg) => {
+  const view = new RoadSvgView()
+  view.model = road
+  roads.push(view)
+  const roadsGroup = svg.querySelector('g.roads')
+  roadsGroup.appendChild(view.svg)
+  return view
+}
+
+const resizeSvg = (svg, dim) => setAttributes(svg, { width: dim.width, height: dim.height } )
+
+const rescaleView = (view, scaleX, scaleY) => {
+  view.scaleX = scaleX
+  view.scaleY = scaleY
 }
 
 
@@ -70,6 +85,7 @@ export default class SvgView {
     this.zoom$ = new Rx.Subject()
     this.worldModel$ = new Rx.Subject()
     this.intersections$ = new Rx.BehaviorSubject([])
+    this.roads$ = new Rx.BehaviorSubject([])
     this.dim$ = this.container$.map(dim)
     this.svg$ = this.container$.map(svg).share()
     this.svgClick$ = this.svg$.switchMap(svgClick)
@@ -79,10 +95,13 @@ export default class SvgView {
     this.worldClick$ = this.svgClick$.withLatestFrom(this.scaleX$, this.scaleY$, worldClick).share()
     this.intersection$ = this.worldModel$.switchMap(intersection)
     this.intersectionView$ = this.intersection$.withLatestFrom(this.intersections$, this.svg$, intersectionView)
+    this.road$ = this.worldModel$.switchMap(road)
+    this.roadView$ = this.road$.withLatestFrom(this.roads$, this.svg$, roadView)
 
     this.svg$.combineLatest(this.dim$, resizeSvg).subscribe()
     this.worldClick$.subscribe()
-    this.intersectionView$.combineLatest(this.scaleX$, this.scaleY$, renderNewIntersection).subscribe()
+    this.intersectionView$.combineLatest(this.scaleX$, this.scaleY$, rescaleView).subscribe()
+    this.roadView$.combineLatest(this.scaleX$, this.scaleY$, rescaleView).subscribe()
   }
 
   set container (value) {

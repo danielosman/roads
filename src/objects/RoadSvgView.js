@@ -3,12 +3,10 @@ import Rx from 'rxjs/Rx'
 import SVG from 'svg.js'
 import draggable from 'svg.draggable.js'
 
-import { normalize } from '../utils'
-
 const svg = (model) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'g')
   svg.setAttribute('id', model.cid)
-  svg.classList.add('intersection')
+  svg.classList.add('road')
   return svg
 }
 
@@ -33,7 +31,7 @@ const branchCircleElems$ = (previousBranchCircleElems, [model, svg]) => {
   return newElems
 }
 
-const point = ([model, scaleX, scaleY]) => [scaleX(model.x), scaleY(model.y)]
+const point = (model, scaleX, scaleY) => [scaleX(model.x), scaleY(model.y)]
 
 const polygon = svg => SVG.adopt(svg).polygon()
 
@@ -46,7 +44,7 @@ const handleChangedBranchDir = ([branchCircleMoved, point, model]) => {
   model.changeBranchDir(branchCircleMoved.branchIndex, dir)
 }
 
-const renderIntersection = ([model, polygon, scaleX, scaleY]) => {
+const renderRoad = (model, polygon, scaleX, scaleY) => {
   polygon.plot(model.scaledPolygon(scaleX, scaleY))
 }
 
@@ -58,8 +56,7 @@ const renderBranchCircles = ([branchCircleElems, model, scaleX, scaleY]) => {
   })
 }
 
-
-export default class IntersectionSvgView extends EventEmitter {
+export default class RoadSvgView extends EventEmitter {
   constructor () {
     super()
     this.initialModel$ = new Rx.Subject()
@@ -67,21 +64,19 @@ export default class IntersectionSvgView extends EventEmitter {
     this.scaleY$ = new Rx.Subject()
     this.svg$ = this.initialModel$.map(svg).share()
     this.model$ = this.initialModel$.switchMap(model)
-    this.branchCircleElems$ = this.model$.withLatestFrom(this.svg$).scan(branchCircleElems$, [])
-    this.point$ = this.model$.combineLatest(this.scaleX$, this.scaleY$).map(point)
+    //this.branchCircleElems$ = this.model$.withLatestFrom(this.svg$).scan(branchCircleElems$, [])
+    this.point$ = this.model$.combineLatest(this.scaleX$, this.scaleY$, point)
     this.polygon$ = this.svg$.map(polygon)
-    this.branchCircleMoved$ = this.initialModel$.switchMap(branchCircleMoved$)
+    //this.branchCircleMoved$ = this.initialModel$.switchMap(branchCircleMoved$)
 
     this.svg$.subscribe(svg => this._svg = svg)
-    this.branchCircleMoved$
-      .withLatestFrom(this.point$, this.model$)
-      .subscribe(handleChangedBranchDir)
-    this.model$
-      .combineLatest(this.polygon$, this.scaleX$, this.scaleY$)
-      .subscribe(renderIntersection)
-    this.branchCircleElems$
-      .combineLatest(this.model$, this.scaleX$, this.scaleY$)
-      .subscribe(renderBranchCircles)
+    //this.branchCircleMoved$
+    //  .withLatestFrom(this.point$, this.model$)
+    //  .subscribe(handleChangedBranchDir)
+    this.model$.combineLatest(this.polygon$, this.scaleX$, this.scaleY$, renderRoad).subscribe()
+    //this.branchCircleElems$
+    //  .combineLatest(this.model$, this.scaleX$, this.scaleY$)
+    //  .subscribe(renderBranchCircles)
   }
 
   set model (value) {
