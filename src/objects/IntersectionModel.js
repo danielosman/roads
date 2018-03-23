@@ -84,11 +84,10 @@ export default class IntersectionModel extends EventEmitter {
       branch.alongs[0].push(maxAlong)
       branch.alongs[1].push(maxAlong)
       const points = []
-      //points.push(along(branch.borders[1], branch.alongs[1][0], { units: 'degrees' }))
       points.push(along(branch.borders[1], branch.alongs[1][1], { units: 'degrees' }))
       points.push(along(branch.borders[0], branch.alongs[0][1], { units: 'degrees' }))
       points.push(along(branch.borders[0], branch.alongs[0][0], { units: 'degrees' }))
-      branch.circle = along(branch.line, maxAlong + w, { units: 'degrees' }).geometry.coordinates
+      branch.circle = along(branch.line, maxAlong, { units: 'degrees' }).geometry.coordinates
       branch.points = points.map(p => p.geometry.coordinates)
       branch.points.forEach(p => intersection.points.push(p))
     })

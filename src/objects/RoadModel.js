@@ -56,8 +56,24 @@ export default class RoadModel extends EventEmitter {
     return road.polygon.map(p => [scaleX(p[0]), scaleY(p[1])])
   }
 
+  scaledLineNodes (scaleX, scaleY) {
+    const road = this
+    return road.points.map(point => ({
+      cx: scaleX(point[0]),
+      cy: scaleY(point[1]),
+      r: scaleX(road.w) - scaleX(0)
+    }))
+  }
+
   addPoint (point) {
     this.points.push(point)
+    this.buildPolygon()
+    this.emit('changed', this)
+  }
+
+  moveLineNode (nodeIndex, x, y) {
+    this.points[nodeIndex][0] = x
+    this.points[nodeIndex][1] = y
     this.buildPolygon()
     this.emit('changed', this)
   }

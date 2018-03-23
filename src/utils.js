@@ -7,7 +7,7 @@ const setAttributes = (elem, attrs) => {
 }
 
 const isFunction = (functionToCheck) => {
- return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]'
+  return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]'
 }
 
 const normalize = (dir) => {

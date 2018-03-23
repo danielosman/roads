@@ -41,6 +41,19 @@ g.intersection g.branch line.border {
   stroke: #eeeeee;
 }
 
+g.road polygon {
+  fill: #111111;
+}
+
+g.road circle {
+  fill: #5555ff;
+}
+g.road circle:hover {
+  stroke: #dd5555;
+  stroke-width: 3px;
+  cursor: move;
+}
+
 a.btn {
   border: 1px solid #dddddd;
   padding: 10px;

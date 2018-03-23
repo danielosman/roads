@@ -1,7 +1,7 @@
 import EventEmitter from 'eventemitter3'
 import Rx from 'rxjs/Rx'
 import SVG from 'svg.js'
-import draggable from 'svg.draggable.js'
+import 'svg.draggable.js'
 
 import { normalize } from '../utils'
 
@@ -52,12 +52,11 @@ const renderIntersection = ([model, polygon, scaleX, scaleY]) => {
 
 const renderBranchCircles = ([branchCircleElems, model, scaleX, scaleY]) => {
   const scaledBranchCircles = model.scaledBranchCircles(scaleX, scaleY)
-  branchCircleElems.forEach((circle, i) => {
+  branchCircleElems.forEach((elem, i) => {
     const scaledCircle = scaledBranchCircles[i]
-    circle.cx(scaledCircle.cx).cy(scaledCircle.cy).radius(scaledCircle.r)
+    elem.cx(scaledCircle.cx).cy(scaledCircle.cy).radius(scaledCircle.r)
   })
 }
-
 
 export default class IntersectionSvgView extends EventEmitter {
   constructor () {
@@ -72,7 +71,7 @@ export default class IntersectionSvgView extends EventEmitter {
     this.polygon$ = this.svg$.map(polygon)
     this.branchCircleMoved$ = this.initialModel$.switchMap(branchCircleMoved$)
 
-    this.svg$.subscribe(svg => this._svg = svg)
+    this.svg$.subscribe(svg => this._svg = svg) // eslint-disable-line no-return-assign
     this.branchCircleMoved$
       .withLatestFrom(this.point$, this.model$)
       .subscribe(handleChangedBranchDir)

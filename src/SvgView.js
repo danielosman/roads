@@ -70,13 +70,12 @@ const roadView = (road, roads, svg) => {
   return view
 }
 
-const resizeSvg = (svg, dim) => setAttributes(svg, { width: dim.width, height: dim.height } )
+const resizeSvg = (svg, dim) => setAttributes(svg, { width: dim.width, height: dim.height })
 
 const rescaleView = (view, scaleX, scaleY) => {
   view.scaleX = scaleX
   view.scaleY = scaleY
 }
-
 
 export default class SvgView {
   constructor () {

@@ -5,10 +5,17 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack",
+    "lint": "eslint --ignore-path .gitignore .",
     "start": "webpack-dev-server --host 0.0.0.0 --port 9003"
   },
   "author": "",
   "license": "ISC",
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es6": true
+    }
+  },
   "babel": {
     "presets": [
       [
@@ -22,15 +29,6 @@
         }
       ]
     ]
-  },
-  "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-core": "^6.26.0",
-    "babel-loader": "^7.1.4",
-    "babel-preset-env": "^1.6.1",
-    "webpack": "^4.1.1",
-    "webpack-cli": "^2.0.11",
-    "webpack-dev-server": "^3.1.1"
   },
   "dependencies": {
     "@turf/along": "^6.0.0",
@@ -51,5 +49,20 @@
     "svg.js": "^2.6.4",
     "three": "^0.91.0",
     "xstream": "^11.2.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.4",
+    "babel-preset-env": "^1.6.1",
+    "eslint": "^4.19.1",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.9.0",
+    "eslint-plugin-node": "^6.0.1",
+    "eslint-plugin-promise": "^3.7.0",
+    "eslint-plugin-standard": "^3.0.1",
+    "webpack": "^4.1.1",
+    "webpack-cli": "^2.0.11",
+    "webpack-dev-server": "^3.1.1"
   }
 }
